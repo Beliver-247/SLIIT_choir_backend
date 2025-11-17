@@ -3,14 +3,10 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import mongoose from 'mongoose';
-import passport from 'passport';
-import session from 'express-session';
 import authRoutes from './routes/auth.js';
-import googleAuthRoutes from './routes/googleAuth.js';
 import memberRoutes from './routes/members.js';
 import eventRoutes from './routes/events.js';
 import donationRoutes from './routes/donations.js';
-import { configureGoogleStrategy } from './config/googleOAuth.js';
 
 dotenv.config();
 
@@ -26,24 +22,6 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session middleware (required for Passport)
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your_session_secret_key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Configure Google OAuth Strategy
-configureGoogleStrategy(passport);
-
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✓ MongoDB Atlas connected'))
@@ -54,7 +32,6 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/auth', googleAuthRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/donations', donationRoutes);
@@ -83,4 +60,3 @@ app.listen(PORT, () => {
   console.log(`📍 Running on: http://localhost:${PORT}`);
   console.log(`🔗 API: http://localhost:${PORT}/api\n`);
 });
-
