@@ -26,7 +26,7 @@ app.use(cors({
       'http://127.0.0.1:5173',
       'http://127.0.0.1:3000',
       'https://sliit-choir-frontend.vercel.app/',
-      'sliit-choir-frontend-git-main-beliver-247s-projects.vercel.app'',
+      'sliit-choir-frontend-git-main-beliver-247s-projects.vercel.app',
       'sliit-choir-frontend-1p4vgtq7z-beliver-247s-projects.vercel.app'
     ];
     
