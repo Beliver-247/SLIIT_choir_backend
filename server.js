@@ -17,30 +17,38 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests from FRONTEND_URL env var, localhost:5173, and localhost:3000
+  origin: function (origin, callback) {
     const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:5173',
+      process.env.FRONTEND_URL,                     // e.g. https://sliit-choir-frontend.vercel.app
       'http://localhost:5173',
       'http://localhost:3000',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:3000',
-      'https://sliit-choir-frontend.vercel.app/',
-      'sliit-choir-frontend-git-main-beliver-247s-projects.vercel.app',
-      'sliit-choir-frontend-1p4vgtq7z-beliver-247s-projects.vercel.app'
-    ];
-    
-    // In development, allow all origins; in production, only allow specified origins
+      'https://sliit-choir-frontend.vercel.app',
+      'https://sliit-choir-frontend-git-main-beliver-247s-projects.vercel.app',
+      'https://sliit-choir-frontend-1p4vgtq7z-beliver-247s-projects.vercel.app'
+    ].filter(Boolean); // removes undefined if FRONTEND_URL isn't set
+
+    // In development, allow all origins
     if (process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+      return callback(null, true);
     }
+
+    // Some requests (like curl, Postman) may have no origin
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.log('❌ CORS blocked origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
