@@ -12,6 +12,21 @@ const memberSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  studentId: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    uppercase: true,
+    match: /^[A-Z]{2}\d{8}$/,
+    validate: {
+      validator: function(v) {
+        // Validate format: 2 uppercase letters followed by 8 digits
+        return /^[A-Z]{2}\d{8}$/.test(v);
+      },
+      message: 'StudentID must be in format: NN(2 letters)xxxxxxxx(8 digits), e.g., CS12345678'
+    }
+  },
   email: {
     type: String,
     required: true,
@@ -23,11 +38,6 @@ const memberSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 6
-  },
-  googleId: {
-    type: String,
-    unique: true,
-    sparse: true
   },
   lastLogin: {
     type: Date,
