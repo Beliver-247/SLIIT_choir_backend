@@ -47,6 +47,19 @@ const eventSchema = new mongoose.Schema({
       default: 'registered'
     }
   }],
+  attendance: [{
+    memberId: mongoose.Schema.Types.ObjectId,
+    status: {
+      type: String,
+      enum: ['present', 'absent', 'excused', 'late'],
+      default: 'absent'
+    },
+    markedAt: {
+      type: Date,
+      default: Date.now
+    },
+    markedBy: mongoose.Schema.Types.ObjectId
+  }],
   status: {
     type: String,
     enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],

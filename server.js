@@ -8,6 +8,7 @@ import memberRoutes from './routes/members.js';
 import eventRoutes from './routes/events.js';
 import donationRoutes from './routes/donations.js';
 import scheduleRoutes from './routes/schedules.js';
+import attendanceRoutes from './routes/attendance.js';
 
 dotenv.config();
 
@@ -75,6 +76,7 @@ app.use('/api/members', memberRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {
