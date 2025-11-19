@@ -11,6 +11,9 @@ import scheduleRoutes from './routes/schedules.js';
 import attendanceRoutes from './routes/attendance.js';
 import merchandiseRoutes from './routes/merchandise.js';
 import orderRoutes from './routes/orders.js';
+import resourceRoutes from './routes/resources.js';
+import resourceRequestRoutes from './routes/resourceRequests.js';
+import favoriteRoutes from './routes/favorites.js';
 
 dotenv.config();
 
@@ -70,6 +73,9 @@ app.use('/api/schedules', scheduleRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/merchandise', merchandiseRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/resource-requests', resourceRequestRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {

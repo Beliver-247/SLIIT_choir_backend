@@ -11,7 +11,7 @@ cloudinary.config({
 });
 
 /**
- * Upload image to Cloudinary
+ * Upload file to Cloudinary (images, PDFs, audio)
  * @param {string} fileBuffer - Base64 encoded file or file buffer
  * @param {string} folder - Folder name in Cloudinary
  * @returns {Promise<Object>} Upload result with URL
@@ -21,7 +21,7 @@ export const uploadToCloudinary = async (fileBuffer, folder = 'receipts') => {
     const result = await cloudinary.uploader.upload(fileBuffer, {
       folder: `sliit-choir/${folder}`,
       resource_type: 'auto',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'],
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp', 'mp3', 'wav', 'ogg'],
       access_control: [{ access_type: 'anonymous' }]
     });
 
@@ -40,13 +40,16 @@ export const uploadToCloudinary = async (fileBuffer, folder = 'receipts') => {
 };
 
 /**
- * Delete image from Cloudinary
- * @param {string} publicId - Public ID of the image
+ * Delete file from Cloudinary (images, PDFs, audio, video)
+ * @param {string} publicId - Public ID of the file
+ * @param {string} resourceType - Type of resource ('image', 'video', 'raw', 'auto')
  * @returns {Promise<Object>} Deletion result
  */
-export const deleteFromCloudinary = async (publicId) => {
+export const deleteFromCloudinary = async (publicId, resourceType = 'auto') => {
   try {
-    const result = await cloudinary.uploader.destroy(publicId);
+    // For audio files, we need to specify resource_type as 'video'
+    const type = resourceType === 'auto' ? (publicId.includes('/audio/') ? 'video' : 'image') : resourceType;
+    const result = await cloudinary.uploader.destroy(publicId, { resource_type: type });
     return {
       success: true,
       result
