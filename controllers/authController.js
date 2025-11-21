@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import Member from '../models/Member.js';
 import { sendVerificationEmail } from '../utils/emailService.js';
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+const isEmailVerificationDisabled = process.env.EMAIL_VERIFICATION_DISABLED === 'true';
 
 export const register = async (req, res) => {
   try {
@@ -57,35 +59,43 @@ export const register = async (req, res) => {
       return res.status(409).json({ message: 'Email already registered' });
     }
 
-    const otp = generateOtp();
-    const hashedOtp = await bcrypt.hash(otp, 10);
-
-    // Create new member
-    const member = new Member({
+    let otp;
+    let hashedOtp;
+    const memberData = {
       firstName,
       lastName,
       studentId: normalizedStudentId,
       email: normalizedEmail,
       password,
-      status: 'inactive',
-      emailVerified: false,
-      verificationCode: hashedOtp,
-      verificationExpires: new Date(Date.now() + 15 * 60 * 1000)
-    });
+      status: isEmailVerificationDisabled ? 'active' : 'inactive',
+      emailVerified: isEmailVerificationDisabled,
+    };
+
+    if (!isEmailVerificationDisabled) {
+      otp = generateOtp();
+      hashedOtp = await bcrypt.hash(otp, 10);
+      memberData.verificationCode = hashedOtp;
+      memberData.verificationExpires = new Date(Date.now() + 15 * 60 * 1000);
+    }
+
+    const member = new Member(memberData);
 
     await member.save();
+    if (!isEmailVerificationDisabled) {
+      await sendVerificationEmail({
+        to: member.email,
+        code: otp,
+        name: member.firstName
+      });
+    }
 
-    await sendVerificationEmail({
-      to: member.email,
-      code: otp,
-      name: member.firstName
-    });
-
-    console.log('[AUTH] Registration pending verification for:', normalizedStudentId);
+    console.log('[AUTH] Registration complete for:', normalizedStudentId, 'Verification disabled?', isEmailVerificationDisabled);
 
     res.status(201).json({
-      message: 'Registration received. Please verify the code sent to your email to activate your account.',
-      requiresVerification: true
+      message: isEmailVerificationDisabled
+        ? 'Registration successful. Email verification is temporarily disabled, you can log in immediately.'
+        : 'Registration received. Please verify the code sent to your email to activate your account.',
+      requiresVerification: !isEmailVerificationDisabled
     });
   } catch (error) {
     console.error('[AUTH] Registration error:', error);
@@ -168,6 +178,39 @@ export const getProfile = async (req, res) => {
 
 export const verifyEmail = async (req, res) => {
   try {
+    if (isEmailVerificationDisabled) {
+      const { studentId } = req.body;
+
+      if (!studentId) {
+        return res.status(400).json({ message: 'StudentID is required while verification is disabled.' });
+      }
+
+      const member = await Member.findOne({ studentId: studentId.toUpperCase() });
+      if (!member) {
+        return res.status(404).json({ message: 'Member not found' });
+      }
+
+      if (!member.emailVerified) {
+        member.emailVerified = true;
+        member.status = 'active';
+        member.verificationCode = undefined;
+        member.verificationExpires = undefined;
+        await member.save();
+      }
+
+      const token = jwt.sign(
+        { id: member._id, studentId: member.studentId, role: member.role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      );
+
+      return res.json({
+        message: 'Email verification is currently disabled. Your account is already active.',
+        token,
+        member: member.toJSON()
+      });
+    }
+
     const { studentId, otp } = req.body;
 
     if (!studentId || !otp) {
