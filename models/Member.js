@@ -61,6 +61,18 @@ const memberSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active'
   },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationCode: {
+    type: String,
+    default: null
+  },
+  verificationExpires: {
+    type: Date,
+    default: null
+  },
   avatar: {
     type: String,
     default: null
@@ -103,7 +115,7 @@ memberSchema.methods.comparePassword = async function(password) {
 
 // Method to return safe user data (without password)
 memberSchema.methods.toJSON = function() {
-  const { password, ...user } = this.toObject();
+  const { password, verificationCode, verificationExpires, __v, ...user } = this.toObject();
   return user;
 };
 
