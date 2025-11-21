@@ -19,6 +19,26 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const SENSITIVE_KEYS = ['password', 'confirmPassword', 'otp', 'token', 'code'];
+
+const sanitizeBody = (payload) => {
+  if (!payload || typeof payload !== 'object') return payload;
+
+  if (Array.isArray(payload)) {
+    return payload.map((item) => sanitizeBody(item));
+  }
+
+  return Object.entries(payload).reduce((acc, [key, value]) => {
+    if (SENSITIVE_KEYS.includes(key)) {
+      acc[key] = '***redacted***';
+    } else if (value && typeof value === 'object') {
+      acc[key] = sanitizeBody(value);
+    } else {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+};
 
 // Middleware
 app.use(helmet());
@@ -62,7 +82,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   if (req.body && Object.keys(req.body).length > 0) {
-    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('Body:', JSON.stringify(sanitizeBody(req.body), null, 2));
   }
   next();
 });
