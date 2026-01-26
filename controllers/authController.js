@@ -2,10 +2,20 @@ import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import Member from '../models/Member.js';
-import { sendVerificationEmail } from '../utils/emailService.js';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../utils/emailService.js';
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 const isEmailVerificationDisabled = process.env.EMAIL_VERIFICATION_DISABLED === 'true';
+const PASSWORD_POLICY_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+const RESET_OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+const RESET_REQUEST_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+const RESET_REQUEST_DAILY_LIMIT = 2;
+
+const startOfUtcDay = (date = new Date()) => {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+};
 
 export const register = async (req, res) => {
   try {
@@ -17,6 +27,11 @@ export const register = async (req, res) => {
     if (!firstName || !lastName || !studentId || !email || !password) {
       console.warn('[AUTH] Registration failed - Missing fields');
       return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    if (!PASSWORD_POLICY_REGEX.test(password)) {
+      console.warn('[AUTH] Registration failed - Weak password');
+      return res.status(400).json({ message: 'Password must be at least 8 characters and include an uppercase letter and a number' });
     }
 
     // Validate StudentID format
@@ -260,6 +275,127 @@ export const verifyEmail = async (req, res) => {
     });
   } catch (error) {
     console.error('[AUTH] Email verification error:', error);
+    res.status(500).json({ message: error.message || 'Internal server error' });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const member = await Member.findOne({ email: normalizedEmail });
+
+    // Always respond success-style to avoid email enumeration
+    const genericSuccess = {
+      message: 'If an account exists for this email, we sent a 6-digit OTP to reset your password.'
+    };
+
+    if (!member) {
+      return res.status(200).json(genericSuccess);
+    }
+
+    const now = new Date();
+    const todayStart = startOfUtcDay(now);
+
+    if (!member.passwordResetWindowStart || member.passwordResetWindowStart < todayStart) {
+      member.passwordResetWindowStart = todayStart;
+      member.passwordResetRequestCount = 0;
+    }
+
+    if (member.passwordResetRequestCount >= RESET_REQUEST_DAILY_LIMIT) {
+      return res.status(429).json({
+        message: 'You have reached the daily limit of 2 password reset requests. Please try again tomorrow.'
+      });
+    }
+
+    if (member.passwordResetLastRequestedAt) {
+      const msSinceLast = now.getTime() - member.passwordResetLastRequestedAt.getTime();
+      if (msSinceLast < RESET_REQUEST_COOLDOWN_MS) {
+        const minutesLeft = Math.ceil((RESET_REQUEST_COOLDOWN_MS - msSinceLast) / 60000);
+        return res.status(429).json({
+          message: `Please wait ${minutesLeft} minute(s) before requesting another reset.`
+        });
+      }
+    }
+
+    const otp = generateOtp();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    member.passwordResetCode = hashedOtp;
+    member.passwordResetExpires = new Date(now.getTime() + RESET_OTP_EXPIRY_MS);
+    member.passwordResetLastRequestedAt = now;
+    member.passwordResetRequestCount += 1;
+
+    await member.save();
+
+    await sendPasswordResetEmail({
+      to: member.email,
+      code: otp,
+      name: member.firstName
+    });
+
+    return res.status(200).json(genericSuccess);
+  } catch (error) {
+    console.error('[AUTH] Forgot password error:', error);
+    res.status(500).json({ message: error.message || 'Internal server error' });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, password, confirmPassword } = req.body;
+
+    if (!email || !otp || !password) {
+      return res.status(400).json({ message: 'Email, OTP, and new password are required' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    if (!PASSWORD_POLICY_REGEX.test(password)) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters and include an uppercase letter and a number' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const member = await Member.findOne({ email: normalizedEmail });
+
+    if (!member) {
+      return res.status(400).json({ message: 'Invalid password reset request' });
+    }
+
+    if (!member.passwordResetCode || !member.passwordResetExpires) {
+      return res.status(400).json({ message: 'No active password reset request. Please request a new OTP.' });
+    }
+
+    if (member.passwordResetExpires < new Date()) {
+      return res.status(400).json({ message: 'Reset OTP expired. Please request a new one.' });
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, member.passwordResetCode);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    const isSamePassword = await bcrypt.compare(password, member.password);
+    if (isSamePassword) {
+      return res.status(400).json({ message: 'New password must be different from your current password' });
+    }
+
+    member.password = password;
+    member.passwordResetCode = null;
+    member.passwordResetExpires = null;
+
+    await member.save();
+
+    return res.json({ message: 'Password reset successful. You can now log in.' });
+  } catch (error) {
+    console.error('[AUTH] Reset password error:', error);
     res.status(500).json({ message: error.message || 'Internal server error' });
   }
 };
