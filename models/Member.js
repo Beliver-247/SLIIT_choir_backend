@@ -37,7 +37,14 @@ const memberSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 6
+    minlength: 8,
+    validate: {
+      validator: function(v) {
+        // Require at least one uppercase letter and one number
+        return /^(?=.*[A-Z])(?=.*\d).{8,}$/.test(v);
+      },
+      message: 'Password must be at least 8 characters long and include at least one uppercase letter and one number'
+    }
   },
   lastLogin: {
     type: Date,
@@ -70,6 +77,26 @@ const memberSchema = new mongoose.Schema({
     default: null
   },
   verificationExpires: {
+    type: Date,
+    default: null
+  },
+  passwordResetCode: {
+    type: String,
+    default: null
+  },
+  passwordResetExpires: {
+    type: Date,
+    default: null
+  },
+  passwordResetLastRequestedAt: {
+    type: Date,
+    default: null
+  },
+  passwordResetRequestCount: {
+    type: Number,
+    default: 0
+  },
+  passwordResetWindowStart: {
     type: Date,
     default: null
   },
@@ -115,7 +142,18 @@ memberSchema.methods.comparePassword = async function(password) {
 
 // Method to return safe user data (without password)
 memberSchema.methods.toJSON = function() {
-  const { password, verificationCode, verificationExpires, __v, ...user } = this.toObject();
+  const {
+    password,
+    verificationCode,
+    verificationExpires,
+    passwordResetCode,
+    passwordResetExpires,
+    passwordResetLastRequestedAt,
+    passwordResetRequestCount,
+    passwordResetWindowStart,
+    __v,
+    ...user
+  } = this.toObject();
   return user;
 };
 

@@ -46,3 +46,30 @@ export const sendVerificationEmail = async ({ to, code, name }) => {
     html,
   });
 };
+
+export const sendPasswordResetEmail = async ({ to, code, name }) => {
+  const mailer = ensureTransporter();
+  const subject = 'Reset your SLIIT Choir password';
+  const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/`;
+  const text = `Hi ${name},\n\nUse this One-Time Password (OTP) to reset your choir portal password: ${code}.\n\nThe code expires in 5 minutes. After resetting, return to the login page: ${loginUrl}\n\nIf you did not request this, you can safely ignore this email.\n\nSLIIT Choir`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+      <h2 style="color:#1d4ed8;">SLIIT Choir Password Reset</h2>
+      <p>Hi ${name},</p>
+      <p>Use the OTP below to reset your password. The code expires in 5 minutes.</p>
+      <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #111827;">${code}</p>
+      <p>After resetting, return to the <a href="${loginUrl}" style="color:#1d4ed8;">login page</a>.</p>
+      <p>If you didn't request this reset, you can ignore this email.</p>
+      <p>— SLIIT Choir Team</p>
+    </div>
+  `;
+
+  await mailer.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to,
+    subject,
+    text,
+    html,
+  });
+};
