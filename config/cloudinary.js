@@ -21,7 +21,7 @@ export const uploadToCloudinary = async (fileBuffer, folder = 'receipts') => {
     const result = await cloudinary.uploader.upload(fileBuffer, {
       folder: `sliit-choir/${folder}`,
       resource_type: 'auto',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp', 'mp3', 'wav', 'ogg'],
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp', 'mp3', 'wav', 'ogg', 'mp4', 'webm', 'mov', 'mkv'],
       access_control: [{ access_type: 'anonymous' }]
     });
 
@@ -47,8 +47,8 @@ export const uploadToCloudinary = async (fileBuffer, folder = 'receipts') => {
  */
 export const deleteFromCloudinary = async (publicId, resourceType = 'auto') => {
   try {
-    // For audio files, we need to specify resource_type as 'video'
-    const type = resourceType === 'auto' ? (publicId.includes('/audio/') ? 'video' : 'image') : resourceType;
+    // For audio/video files, we need to specify resource_type as 'video'
+    const type = resourceType === 'auto' ? ((publicId.includes('/audio/') || publicId.includes('/videos/')) ? 'video' : 'image') : resourceType;
     const result = await cloudinary.uploader.destroy(publicId, { resource_type: type });
     return {
       success: true,
