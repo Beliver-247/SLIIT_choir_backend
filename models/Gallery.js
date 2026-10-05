@@ -32,7 +32,7 @@ const gallerySchema = new mongoose.Schema({
   },
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Member',
     required: true
   },
   status: {

@@ -16,13 +16,17 @@ const fileFilter = (req, file, cb) => {
     'audio/wav',
     'audio/x-wav',
     'audio/ogg',
-    'audio/webm'
+    'audio/webm',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-matroska'
   ];
   
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only JPEG, PNG, WebP, PDF, and audio files (MP3, WAV, OGG) are allowed.'), false);
+    cb(new Error('Invalid file type. Only Images, PDFs, Audio, and Video files are allowed.'), false);
   }
 };
 

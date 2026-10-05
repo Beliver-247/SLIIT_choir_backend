@@ -1,4 +1,5 @@
 import Gallery from '../models/Gallery.js';
+import Member from '../models/Member.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary.js';
 
 // Create gallery item (Admin/Moderator)
