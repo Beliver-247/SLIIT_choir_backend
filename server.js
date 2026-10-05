@@ -46,10 +46,6 @@ app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
       process.env.FRONTEND_URL,                     // e.g. https://sliit-choir-frontend.vercel.app
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
       'https://sliit-choir-frontend.vercel.app',
       'https://sliit-choir-frontend-git-main-beliver-247s-projects.vercel.app',
       'https://sliit-choir-frontend-1p4vgtq7z-beliver-247s-projects.vercel.app'
@@ -108,7 +104,31 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/resource-requests', resourceRequestRoutes);
 app.use('/api/favorites', favoriteRoutes);
 
-// Health Check
+// Health Checks
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/health/db', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
+      throw new Error('Database not connected');
+    }
+
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database ping timeout')), 5000)
+    );
+    const ping = mongoose.connection.db.admin().ping();
+    
+    await Promise.race([ping, timeout]);
+    
+    res.status(200).json({ status: 'ok', database: 'up' });
+  } catch (error) {
+    console.error('✗ Database health check failed:', error.message);
+    res.status(503).json({ status: 'error', database: 'down' });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running' });
 });
