@@ -14,6 +14,7 @@ import orderRoutes from './routes/orders.js';
 import resourceRoutes from './routes/resources.js';
 import resourceRequestRoutes from './routes/resourceRequests.js';
 import favoriteRoutes from './routes/favorites.js';
+import galleryRoutes from './routes/gallery.js';
 
 dotenv.config();
 
@@ -45,7 +46,8 @@ app.use(helmet());
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
-      process.env.FRONTEND_URL,                     // e.g. https://sliit-choir-frontend.vercel.app
+      process.env.FRONTEND_URL,  
+      'http://localhost:5173',                  
       'https://sliit-choir-frontend.vercel.app',
       'https://sliit-choir-frontend-git-main-beliver-247s-projects.vercel.app',
       'https://sliit-choir-frontend-1p4vgtq7z-beliver-247s-projects.vercel.app'
@@ -103,6 +105,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/resource-requests', resourceRequestRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 // Health Checks
 app.get('/health', (req, res) => {
