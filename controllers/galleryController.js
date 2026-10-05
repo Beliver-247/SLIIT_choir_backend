@@ -137,3 +137,71 @@ export const deleteGalleryItem = async (req, res) => {
     });
   }
 };
+
+// Update gallery item (Admin/Moderator)
+export const updateGalleryItem = async (req, res) => {
+  try {
+    const { title, description, fileType, year, month } = req.body;
+    const file = req.file;
+
+    const galleryItem = await Gallery.findById(req.params.id);
+
+    if (!galleryItem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Gallery item not found'
+      });
+    }
+
+    if (title) galleryItem.title = title;
+    if (description !== undefined) galleryItem.description = description;
+    if (year) galleryItem.year = parseInt(year, 10);
+    if (month) galleryItem.month = parseInt(month, 10);
+    
+    // If a new file is uploaded, upload to Cloudinary and replace the old one
+    if (file) {
+      const type = fileType || galleryItem.fileType;
+      const base64File = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+      const folder = type === 'video' ? 'gallery/videos' : 'gallery/images';
+      
+      const uploadResult = await uploadToCloudinary(base64File, folder, { resource_type: 'auto' });
+      
+      if (!uploadResult.success) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload new file: ' + uploadResult.error
+        });
+      }
+      
+      // Delete old file from Cloudinary
+      if (galleryItem.cloudinaryPublicId) {
+        await deleteFromCloudinary(galleryItem.cloudinaryPublicId);
+      }
+      
+      galleryItem.fileUrl = uploadResult.url;
+      galleryItem.cloudinaryPublicId = uploadResult.publicId;
+      if (fileType) galleryItem.fileType = fileType;
+    } else if (fileType && fileType !== galleryItem.fileType) {
+       // Cannot just change fileType without uploading a new file of that type
+       return res.status(400).json({
+         success: false,
+         message: 'You must upload a new file if you want to change the file type'
+       });
+    }
+
+    await galleryItem.save();
+    await galleryItem.populate('uploadedBy', 'firstName lastName email');
+
+    res.json({
+      success: true,
+      message: 'Gallery item updated successfully',
+      data: galleryItem
+    });
+  } catch (error) {
+    console.error('Update gallery item error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update gallery item'
+    });
+  }
+};
